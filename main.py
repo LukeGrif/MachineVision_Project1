@@ -6,12 +6,10 @@ from scipy.fftpack import rfft, irfft
 from PIL import Image
 import argparse
 
-
 def ramp_filter(ffts):
     """Applies a ramp filter in the frequency domain."""
     ramp = np.floor(np.arange(0.5, ffts.shape[1] // 2 + 0.1, 0.5))
     return ffts * ramp
-
 
 def hamming_ramp_filter(ffts):
     """Applies a ramp filter with Hamming window."""
@@ -19,6 +17,13 @@ def hamming_ramp_filter(ffts):
     hamming = np.hamming(len(ramp))
     return ffts * ramp * hamming
 
+def hann_ramp_filter(ffts):
+    """Applies a ramp filter with Hann window."""
+    ramp = np.floor(np.arange(0.5, ffts.shape[1] // 2 + 0.1, 0.5))
+    # "Hann window" and "Hanning window" are the same thing apparently
+    # https://numpy.org/doc/stable/reference/generated/numpy.hanning.html
+    hann = np.hanning(len(ramp))
+    return ffts * ramp * hann
 
 def reconstruct_image(sinogram, filter_fn=None):
     """Reconstructs an image from a sinogram using backprojection."""
@@ -103,6 +108,11 @@ def main():
     recon_hamming_green = reconstruct_image(green_sinogram, hamming_ramp_filter)
     recon_hamming_blue = reconstruct_image(blue_sinogram, hamming_ramp_filter)
 
+    # Reconstruction with Hann ramp filter
+    recon_hann_red = reconstruct_image(red_sinogram, hann_ramp_filter)
+    recon_hann_green = reconstruct_image(green_sinogram, hann_ramp_filter)
+    recon_hann_blue = reconstruct_image(blue_sinogram, hann_ramp_filter)
+
     # Crop images using the corrected function
     recon_no_filter_red = crop_image(recon_no_filter_red, width_ratio, height_ratio)
     recon_no_filter_green = crop_image(recon_no_filter_green, width_ratio, height_ratio)
@@ -115,6 +125,10 @@ def main():
     recon_hamming_red = crop_image(recon_hamming_red, width_ratio, height_ratio)
     recon_hamming_green = crop_image(recon_hamming_green, width_ratio, height_ratio)
     recon_hamming_blue = crop_image(recon_hamming_blue, width_ratio, height_ratio)
+
+    recon_hann_red = crop_image(recon_hann_red, width_ratio, height_ratio)
+    recon_hann_green = crop_image(recon_hann_green, width_ratio, height_ratio)
+    recon_hann_blue = crop_image(recon_hann_blue, width_ratio, height_ratio)
 
     # Normalize results
     recon_no_filter = np.dstack((
@@ -135,19 +149,29 @@ def main():
         normalize_image(recon_hamming_blue)
     ))
 
+    recon_hann = np.dstack((
+        normalize_image(recon_hann_red),
+        normalize_image(recon_hann_green),
+        normalize_image(recon_hann_blue)
+    ))
+
     # Save images
     Image.fromarray(recon_no_filter).save('recon_no_filter.png')
     Image.fromarray(recon_ramp).save('recon_ramp.png')
     Image.fromarray(recon_hamming).save('recon_hamming.png')
+    Image.fromarray(recon_hann).save('recon_hann.png')
 
     # Display results
-    fig, axes = plt.subplots(1, 3, figsize=(15, 5))
+    fig, axes = plt.subplots(1, 4, figsize=(15, 5))
     axes[0].imshow(recon_no_filter)
     axes[0].set_title("No Filter")
     axes[1].imshow(recon_ramp)
     axes[1].set_title("Ramp Filter")
     axes[2].imshow(recon_hamming)
     axes[2].set_title("Hamming Ramp Filter")
+    axes[3].imshow(recon_hann)
+    axes[3].set_title("Hann Ramp Filter")
+    print("show")
     plt.show()
 
 
