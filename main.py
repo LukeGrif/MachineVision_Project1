@@ -90,88 +90,39 @@ def main():
     # Print the extracted aspect ratio
     print(f"Extracted Aspect Ratio from Metadata: {aspect_ratio_str} ({width_ratio}:{height_ratio})")
 
-    # Split into RGB channels
-    red_sinogram, green_sinogram, blue_sinogram = sinogram[:, :, 0], sinogram[:, :, 1], sinogram[:, :, 2]
+    # Define filters
+    filters = {
+        "No Filter": None,
+        "Ramp Filter": ramp_filter,
+        "Hamming Ramp Filter": hamming_ramp_filter,
+        "Hann Ramp Filter": hann_ramp_filter
+    }
 
-    # Reconstruction without filter
-    recon_no_filter_red = reconstruct_image(red_sinogram)
-    recon_no_filter_green = reconstruct_image(green_sinogram)
-    recon_no_filter_blue = reconstruct_image(blue_sinogram)
-
-    # Reconstruction with ramp filter
-    recon_ramp_red = reconstruct_image(red_sinogram, ramp_filter)
-    recon_ramp_green = reconstruct_image(green_sinogram, ramp_filter)
-    recon_ramp_blue = reconstruct_image(blue_sinogram, ramp_filter)
-
-    # Reconstruction with Hamming ramp filter
-    recon_hamming_red = reconstruct_image(red_sinogram, hamming_ramp_filter)
-    recon_hamming_green = reconstruct_image(green_sinogram, hamming_ramp_filter)
-    recon_hamming_blue = reconstruct_image(blue_sinogram, hamming_ramp_filter)
-
-    # Reconstruction with Hann ramp filter
-    recon_hann_red = reconstruct_image(red_sinogram, hann_ramp_filter)
-    recon_hann_green = reconstruct_image(green_sinogram, hann_ramp_filter)
-    recon_hann_blue = reconstruct_image(blue_sinogram, hann_ramp_filter)
-
-    # Crop images using the corrected function
-    recon_no_filter_red = crop_image(recon_no_filter_red, width_ratio, height_ratio)
-    recon_no_filter_green = crop_image(recon_no_filter_green, width_ratio, height_ratio)
-    recon_no_filter_blue = crop_image(recon_no_filter_blue, width_ratio, height_ratio)
-
-    recon_ramp_red = crop_image(recon_ramp_red, width_ratio, height_ratio)
-    recon_ramp_green = crop_image(recon_ramp_green, width_ratio, height_ratio)
-    recon_ramp_blue = crop_image(recon_ramp_blue, width_ratio, height_ratio)
-
-    recon_hamming_red = crop_image(recon_hamming_red, width_ratio, height_ratio)
-    recon_hamming_green = crop_image(recon_hamming_green, width_ratio, height_ratio)
-    recon_hamming_blue = crop_image(recon_hamming_blue, width_ratio, height_ratio)
-
-    recon_hann_red = crop_image(recon_hann_red, width_ratio, height_ratio)
-    recon_hann_green = crop_image(recon_hann_green, width_ratio, height_ratio)
-    recon_hann_blue = crop_image(recon_hann_blue, width_ratio, height_ratio)
-
-    # Normalize results
-    recon_no_filter = np.dstack((
-        normalize_image(recon_no_filter_red),
-        normalize_image(recon_no_filter_green),
-        normalize_image(recon_no_filter_blue)
-    ))
-
-    recon_ramp = np.dstack((
-        normalize_image(recon_ramp_red),
-        normalize_image(recon_ramp_green),
-        normalize_image(recon_ramp_blue)
-    ))
-
-    recon_hamming = np.dstack((
-        normalize_image(recon_hamming_red),
-        normalize_image(recon_hamming_green),
-        normalize_image(recon_hamming_blue)
-    ))
-
-    recon_hann = np.dstack((
-        normalize_image(recon_hann_red),
-        normalize_image(recon_hann_green),
-        normalize_image(recon_hann_blue)
-    ))
+    # Process each color channel
+    reconstructed_images = {}
+    channels = ['Red', 'Green', 'Blue']
+    
+    for filter_name, filter_func in filters.items():
+        recon_channels = []
+        for i, color in enumerate(channels):
+            recon = reconstruct_image(sinogram[:, :, i], filter_func)  # Reconstruct
+            recon = crop_image(recon, width_ratio, height_ratio)  # Crop
+            recon = normalize_image(recon)  # Normalize
+            recon_channels.append(recon)
+        
+        reconstructed_images[filter_name] = np.dstack(recon_channels)  # Stack RGB channels
 
     # Save images
-    Image.fromarray(recon_no_filter).save('recon_no_filter.png')
-    Image.fromarray(recon_ramp).save('recon_ramp.png')
-    Image.fromarray(recon_hamming).save('recon_hamming.png')
-    Image.fromarray(recon_hann).save('recon_hann.png')
-
+    for filter_name, image in reconstructed_images.items():
+        Image.fromarray(image).save(f'recon_{filter_name.lower().replace(" ", "_")}.png')
+    
     # Display results
     fig, axes = plt.subplots(1, 4, figsize=(15, 5))
-    axes[0].imshow(recon_no_filter)
-    axes[0].set_title("No Filter")
-    axes[1].imshow(recon_ramp)
-    axes[1].set_title("Ramp Filter")
-    axes[2].imshow(recon_hamming)
-    axes[2].set_title("Hamming Ramp Filter")
-    axes[3].imshow(recon_hann)
-    axes[3].set_title("Hann Ramp Filter")
-    print("show")
+    for ax, (filter_name, image) in zip(axes, reconstructed_images.items()):
+        ax.imshow(image)
+        ax.set_title(filter_name)
+        ax.axis('off')
+    
     plt.show()
 
 
